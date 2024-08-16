@@ -48,7 +48,7 @@ export default async function routes (fastify, options) {
   fastify.get('/read', async (req, reply) => {
     const { filepath } = req.query
 
-    if (!filepath) return { message: '缺少参数' }
+    if (!filepath) return { message: '缺少参数 - filepath' }
 
     if (!filepath.includes('.json')) return { message: '不是json文件' }
 
