@@ -14,6 +14,10 @@
 query参数：
 * filepath: 文件路径
 
+## /update-file
+data
+filePath 注意大写
+
 ## /upload
 > 以文件的形式存储json文件
 formdata参数
