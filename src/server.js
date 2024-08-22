@@ -31,10 +31,8 @@ fastify.register(cors, {
 
 fastify.register(routes)
 
-fastify.listen({ port: 6600, host: '0.0.0.0' }, (err, address) => {
-  if (err) {
-    fastify.log.error(err)
-    process.exit(1)
-  }
-  fastify.log.info(`server listening on ${address}`)
-})
+// 导出 Fastify 实例的处理函数
+export default async (req, res) => {
+  await fastify.ready();
+  return fastify.routing(req, res);
+}
