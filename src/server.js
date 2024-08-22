@@ -4,8 +4,10 @@ import routes from './router/index.js'
 import multipart from '@fastify/multipart';
 import pino from 'pino';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const logger = pino({
-  transport: {
+  transport: isProduction ? undefined : {
     target: 'pino-pretty',
     options: {
       colorize: true,
