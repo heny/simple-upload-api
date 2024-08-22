@@ -59,15 +59,21 @@ export default async function routes (fastify, options) {
     }
   });
 
-  fastify.post('/update-bookmarks', async (req, reply) => {
-    const data = req.body;
-    if (!data) return { message: '缺少参数' };
+
+
+  fastify.post('/update-file', async (req, reply) => {
+    // 必须解析
+    const { data, filePath } = JSON.parse(req.body) || {};
+    console.log('hhh - filePath', filePath)
+    if (!data) return { message: '缺少参数 - data' };
+    if(!filePath) return { message: '缺少参数 - filePath' };
 
     try {
       await githubApi.patch(`/${GIST_ID}`, {
         files: {
-          'bookmarks.json': {
-            content: data,
+          [filePath]: {
+            // 传入gist 的必须stringify
+            content: JSON.stringify(data),
           },
         },
       });
