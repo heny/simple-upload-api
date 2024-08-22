@@ -1,88 +1,111 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { pipeline } from 'node:stream';
-import util from 'node:util';
+import axios from 'axios';
 
-const pump = util.promisify(pipeline);
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GIST_ID = '483d9e6b624af7013abe17d71a9c0637'; // 替换为你的 Gist ID
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const dataDir = path.join(__dirname, '../data');
+console.log('hhh - GITHUB_TOKEN',GITHUB_TOKEN )
+const githubApi = axios.create({
+  baseURL: 'https://api.github.com/gists',
+  headers: {
+    Authorization: `token ${GITHUB_TOKEN}`,
+    Accept: 'application/vnd.github.v3+json',
+  },
+});
 
 export default async function routes (fastify, options) {
-  // 确保目录存在
-  fs.promises.mkdir(dataDir, { recursive: true });
-
   // 根路由
   fastify.get('/', () => 'Hello fastify!');
 
   fastify.get('/data', async (req, reply) => {
-    const dataPath = path.join(dataDir, 'data.json');
     try {
-      const data = await fs.promises.readFile(dataPath, 'utf-8');
+      const response = await githubApi.get(`/${GIST_ID}`);
+      const data = response.data.files['data.json'].content;
       return { message: 'success', data: JSON.parse(data) };
     } catch (error) {
       return { message: '没有找到 data.json 文件' };
     }
-  })
+  });
 
   fastify.post('/update', async (req, reply) => {
     const data = req.body;
-    console.log('hhh - req.body', data)
-    if (!data) return { message: '缺少参数' }
+    if (!data) return { message: '缺少参数' };
 
-    const dataPath = path.join(dataDir, 'data.json');
     try {
-      await fs.promises.writeFile(dataPath, data, 'utf-8');
+      await githubApi.patch(`/${GIST_ID}`, {
+        files: {
+          'data.json': {
+            content: data,
+          },
+        },
+      });
+      return { message: 'success', data: data };
+    } catch (error) {
+      return { message: '写入失败' };
+    }
+  });
+
+  fastify.get('/read', async (req, reply) => {
+    const { filepath } = req.query;
+    if (!filepath) return { message: '缺少参数 - filepath' };
+    if (!filepath.includes('.json')) return { message: '不是json文件' };
+
+    try {
+      const response = await githubApi.get(`/${GIST_ID}`);
+      const data = response.data.files[filepath]?.content;
+      if (!data) throw new Error('文件不存在');
       return { message: 'success', data: JSON.parse(data) };
     } catch (error) {
-      return { message: '写入失败' }
+      return { message: '没有找到文件' };
+    }
+  });
+
+  fastify.post('/update-bookmarks', async (req, reply) => {
+    const data = req.body;
+    if (!data) return { message: '缺少参数' };
+
+    try {
+      await githubApi.patch(`/${GIST_ID}`, {
+        files: {
+          'bookmarks.json': {
+            content: data,
+          },
+        },
+      });
+      return { message: 'success', data: data };
+    } catch (error) { 
+      return { message: '写入失败' };
     }
   })
 
-  /**
-   * filepath
-   */
-  fastify.get('/read', async (req, reply) => {
-    const { filepath } = req.query
+  fastify.post('/upload', async (req, reply) => {
+    const data = await req.file();
+    const name = data.fields.name?.value || data.filename;
 
-    if (!filepath) return { message: '缺少参数 - filepath' }
+    if (!name.endsWith('.json')) {
+      return reply.status(400).send({ message: '仅支持上传json文件' });
+    }
 
-    if (!filepath.includes('.json')) return { message: '不是json文件' }
-
-    const fileFullPath = path.join(dataDir, filepath); // 构建文件路径
     try {
-      await fs.promises.access(fileFullPath, fs.constants.F_OK);
-      const data = await fs.promises.readFile(fileFullPath, 'utf-8');
-      return { message: 'success', data: JSON.parse(data) };
+      const content = await streamToString(data.file);
+
+      await githubApi.patch(`/${GIST_ID}`, {
+        files: {
+          [name]: { content },
+        },
+      });
+
+      reply.send({ message: '文件上传成功', filename: name });
     } catch (error) {
-      return { message: '没有找到文件' }
+      console.error(error);
+      reply.status(500).send({ message: '上传失败' });
     }
   });
-
-  /**
-   * 上传文件并替换 bookmarks.json
-   * name: 文件名
-   * dir: 目录
-   */
-  fastify.post('/upload', async (req, reply) => {
-    const data = await req.file(); // 获取上传的文件
-    const name = data.fields.name?.value || data.filename; // 直接获取 name
-    const dir = data.fields.dir?.value || ''; // 直接获取 dir，默认为空
-    console.log('hhh - name, dir', name, dir)
-
-    if(!name.includes('.json')) return { message: '仅支持上传json文件' }
-
-    const bookmarksPath = path.join(dataDir, dir, name);
-
-    // 创建目录（如果不存在）
-    await fs.promises.mkdir(path.dirname(bookmarksPath), { recursive: true });
-
-    // 保存文件
-    await pump(data.file, fs.createWriteStream(bookmarksPath));
-    // console.log('hhh - 成功了');
-    reply.send({ message: 'Bookmarks replaced successfully' });
-  });
 }
+
+// 辅助函数：将可读流转换为字符串
+const streamToString = (stream) => new Promise((resolve, reject) => {
+  const chunks = [];
+  stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+  stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+  stream.on('error', reject);
+});
