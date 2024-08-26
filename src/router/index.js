@@ -1,9 +1,8 @@
 import axios from 'axios';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const GIST_ID = '483d9e6b624af7013abe17d71a9c0637'; // 替换为你的 Gist ID
+const GIST_ID = process.env.GITHUB_GIST_ID; // 替换为你的 Gist ID
 
-console.log('hhh - GITHUB_TOKEN',GITHUB_TOKEN )
 const githubApi = axios.create({
   baseURL: 'https://api.github.com/gists',
   headers: {
@@ -13,6 +12,17 @@ const githubApi = axios.create({
 });
 
 export default async function routes (fastify, options) {
+  // 中间件：校验 GIST_ID 和 GITHUB_TOKEN
+  fastify.addHook('preHandler', (req, reply, done) => {
+    if (!GITHUB_TOKEN) {
+      return reply.status(500).send({ message: '缺少 GITHUB_TOKEN 环境变量' });
+    }
+    if (!GIST_ID) {
+      return reply.status(500).send({ message: '缺少 GITHUB_GIST_ID 环境变量' });
+    }
+    done();
+  });
+
   // 根路由
   fastify.get('/', () => 'Hello fastify!');
 
@@ -66,7 +76,7 @@ export default async function routes (fastify, options) {
     const { data, filePath } = JSON.parse(req.body) || {};
     console.log('hhh - filePath', filePath)
     if (!data) return { message: '缺少参数 - data' };
-    if(!filePath) return { message: '缺少参数 - filePath' };
+    if (!filePath) return { message: '缺少参数 - filePath' };
 
     try {
       await githubApi.patch(`/${GIST_ID}`, {
@@ -78,7 +88,7 @@ export default async function routes (fastify, options) {
         },
       });
       return { message: 'success', data: data };
-    } catch (error) { 
+    } catch (error) {
       return { message: '写入失败' };
     }
   })
