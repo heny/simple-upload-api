@@ -9,7 +9,7 @@
 2. 导入该项目
 
 3. 在vercel上配置环境变量
-  * GITHUB_TOKEN: github setting -> developer settings -> personal access tokens -> tokens(classic) -> generate new token
+  * GITHUB_TOKEN: github setting -> developer settings -> personal access tokens -> tokens(classic) -> generate new token -> 该token最好只选择read:gist权限
   * GIST_ID: github gist -> new gist -> public -> 名字输入data.json 随便输入内容后进入详情并复制url上面最后一部分的id
 
 4. 部署即可
