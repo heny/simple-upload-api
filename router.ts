@@ -120,7 +120,7 @@ export default async function routes (fastify, options) {
 
 // 辅助函数：将可读流转换为字符串
 const streamToString = (stream) => new Promise((resolve, reject) => {
-  const chunks = [];
+  const chunks: Buffer[] = [];
   stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
   stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
   stream.on('error', reject);

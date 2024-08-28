@@ -1,6 +1,6 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
-import routes from './router/index.js'
+import routes from './router'
 import multipart from '@fastify/multipart';
 import { inject } from '@vercel/analytics';
 import pino from 'pino';
