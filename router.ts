@@ -1,19 +1,22 @@
 import axios from 'axios';
 import qiniu from 'qiniu';
 
-const QINIU_ACCESS_KEY = process.env.QINIU_ACCESS_KEY;
-const QINIU_SECRET_KEY = process.env.QINIU_SECRET_KEY;
-const QINIU_BUCKET = process.env.QINIU_BUCKET;
-const QINIU_DOMAIN = process.env.QINIU_DOMAIN;
-const QINIU_ROOT_DIR = process.env.QINIU_ROOT_DIR;
+const QINIU_ACCESS_KEY = process.env.QINIU_ACCESS_KEY || '';
+const QINIU_SECRET_KEY = process.env.QINIU_SECRET_KEY || '';
+const QINIU_BUCKET = process.env.QINIU_BUCKET || '';
+const QINIU_DOMAIN = process.env.QINIU_DOMAIN || '';
+const QINIU_ROOT_DIR = process.env.QINIU_ROOT_DIR || '';
 
 const mac = new qiniu.auth.digest.Mac(QINIU_ACCESS_KEY, QINIU_SECRET_KEY);
 const config = new qiniu.conf.Config();
 const bucketManager = new qiniu.rs.BucketManager(mac, config);
 
 export default async function routes (fastify, options) {
+  fastify.log.info(`hhh - QINIU_DOMAIN: ${QINIU_DOMAIN}`)
+  
   // 中间件：校验七牛云配置
   fastify.addHook('preHandler', (req, reply, done) => {
+
     if (!QINIU_ACCESS_KEY || !QINIU_SECRET_KEY || !QINIU_BUCKET || !QINIU_DOMAIN || !QINIU_ROOT_DIR) {
       return reply.status(500).send({ message: '缺少七牛云配置环境变量' });
     }

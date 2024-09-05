@@ -5,6 +5,15 @@
 
 ## 9.5 更新
 将gist调整为七牛云，查看router.ts的七牛云配置
+本地开发时，添加 .env 文件，并添加七牛云配置
+七牛云空间地址：https://portal.qiniu.com/kodo/bucket
+```bash
+QINIU_ACCESS_KEY=
+QINIU_SECRET_KEY=
+QINIU_BUCKET=
+QINIU_DOMAIN=
+QINIU_ROOT_DIR=
+```
 
 ## 部署方式
 1. 注册并登录 [vercel](https://vercel.com/)
