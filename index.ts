@@ -1,4 +1,4 @@
-import Fastify from 'fastify'
+import Fastify, { FastifyError, FastifyListenOptions } from 'fastify'
 import cors from '@fastify/cors'
 import routes from './router'
 import multipart from '@fastify/multipart';
@@ -15,6 +15,7 @@ const logger = pino({
     options: {
       colorize: true,
       translateTime: false,
+      messageKey: 'msg',  // 添加这行
     },
   },
   timestamp: () => {
@@ -40,14 +41,26 @@ fastify.register(routes)
 const isLocal = process.env.LOCAL === 'true';
 
 if(isLocal) {
-  // 与vercel 不同，不运行vercel dev 则要手动启
-  fastify.listen({ port: 3000, host: '0.0.0.0' }, (err, address) => {
-    if (err) {
-      fastify.log.error(err)
-      process.exit(1)
-    }
-    fastify.log.info(`server listening on ${address}`)
-  })
+  // 定义一个函数来尝试监听端口
+  const tryListen = (port: number) => {
+    const opts: FastifyListenOptions = { port, host: '0.0.0.0' };
+    fastify.listen(opts, (err, address) => {
+      if (err) {
+        if ((err as FastifyError).code === 'EADDRINUSE') {
+          fastify.log.warn(`端口 ${port} 已被占用,尝试下一个端口...`);
+          tryListen(port + 1);
+        } else {
+          fastify.log.error(err);
+          process.exit(1);
+        }
+      } else {
+        fastify.log.info(`服务器正在监听 http://localhost:${port}`);
+      }
+    });
+  };
+
+  // 从3000端口开始尝试
+  tryListen(3000);
 }
 
 // 导出 Fastify 实例的处理函数

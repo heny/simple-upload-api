@@ -9,6 +9,6 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false
   },
-  "include": ["*.ts"],
+  "include": ["*.ts", "router.ts.gist.back"],
   "exclude": ["node_modules"]
 }

@@ -3,6 +3,9 @@
 使用fastify搭建的一个简单的上传json服务
 本项目使用vercel部署
 
+## 9.5 更新
+将gist调整为七牛云，查看router.ts的七牛云配置
+
 ## 部署方式
 1. 注册并登录 [vercel](https://vercel.com/)
 
