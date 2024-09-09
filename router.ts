@@ -44,12 +44,15 @@ export default async function routes (fastify, options) {
     try {
       const key = `${QINIU_ROOT_DIR}/data.json`;
       await uploadFile(key, JSON.stringify(data));
+      await refreshCDNCache(key);
       return { message: 'success', data: data };
     } catch (error) {
-      return { message: '写入失败' };
+      console.error('更新失败:', error);
+      return { message: '写入或刷新缓存失败' };
     }
   });
 
+  // 修改 /read 路由（移除刷新操作）
   fastify.get('/read', async (req, reply) => {
     const { filepath } = req.query as { filepath?: string };
     if (!filepath) return { message: '缺少参数 - filepath' };
@@ -61,10 +64,12 @@ export default async function routes (fastify, options) {
       const data = typeof result === 'string' ? JSON.parse(result) : result;
       return { message: 'success', data };
     } catch (error) {
-      return { message: `没有找到 ${QINIU_ROOT_DIR}/${filepath} 文件` };
+      console.error('读取文件失败:', error);
+      return { message: `没有找到或无法读取 ${QINIU_ROOT_DIR}/${filepath} 文件` };
     }
   });
 
+  // 修改 /update-file 路由（添加刷新操作）
   fastify.post('/update-file', async (req, reply) => {
     const { data, filePath } = JSON.parse(req.body as string) || {};
     console.log('hhh - filePath', filePath)
@@ -74,9 +79,11 @@ export default async function routes (fastify, options) {
     try {
       const key = `${QINIU_ROOT_DIR}/${filePath}`;
       await uploadFile(key, JSON.stringify(data));
+      await refreshCDNCache(key);
       return { message: 'success', data: data };
     } catch (error) {
-      return { message: '写入失败' };
+      console.error('更新文件失败:', error);
+      return { message: '写入或刷新缓存失败' };
     }
   })
 
@@ -152,3 +159,28 @@ const uploadFile = (key: string, content: string): Promise<unknown> => {
     });
   });
 };
+
+// 新增：刷新 CDN 缓存的公共函数
+async function refreshCDNCache(key: string) {
+  const cdnManager = new qiniu.cdn.CdnManager(mac);
+  const refreshUrl = `${QINIU_DOMAIN}/${key}`;
+  try {
+    await new Promise((resolve, reject) => {
+      cdnManager.refreshUrls([refreshUrl], (err, respBody, respInfo) => {
+        if (err) {
+          console.error('刷新 CDN 缓存失败:', err);
+          reject(err);
+        } else if (respInfo.statusCode === 200) {
+          console.log('刷新 CDN 缓存成功');
+          resolve(respBody);
+        } else {
+          console.error('刷新 CDN 缓存失败:', respInfo.statusCode);
+          reject(new Error(`刷新 CDN 缓存失败: ${respInfo.statusCode}`));
+        }
+      });
+    });
+  } catch (error) {
+    console.error('刷新 CDN 缓存时发生错误:', error);
+    throw error;
+  }
+}
